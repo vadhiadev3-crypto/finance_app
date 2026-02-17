@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FinancePro | Personal Manager</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #a855f7;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --bg: #f0f2f5;
+            --card-bg: rgba(255, 255, 255, 0.7);
+            --text: #1f2937;
+            --glass-border: rgba(255, 255, 255, 0.3);
+        }
+
+        .dark-mode {
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text: #f8fafc;
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            transition: all 0.3s ease;
+            padding-bottom: 80px; /* Space for bottom nav */
+        }
+
+        /* Glassmorphism Styles */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+
+        .container { padding: 20px; max-width: 500px; margin: auto; }
+
+        /* Header Card */
+        .balance-card {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 25px;
+            border-radius: 28px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        /* Forms & Inputs */
+        input, select, button {
+            width: 100%;
+            padding: 12px 15px;
+            margin: 10px 0;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            font-family: inherit;
+        }
+
+        .btn-group { display: flex; gap: 10px; }
+        .btn-income { background: var(--success); color: white; border: none; font-weight: 600; }
+        .btn-expense { background: var(--danger); color: white; border: none; font-weight: 600; }
+
+        /* Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: var(--card-bg);
+            backdrop-filter: blur(15px);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid var(--glass-border);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 10px;
+            color: #888;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .nav-item.active { color: var(--primary); }
+        .nav-item i { font-size: 20px; margin-bottom: 4px; }
+
+        /* Transaction List */
+        .tab-content { display: none; animation: fadeIn 0.4s ease; }
+        .tab-content.active { display: block; }
+
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 12px;
+            animation: slideUp 0.3s ease;
+        }
+
+        .bill-preview {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="home" class="tab-content active">
+        <div class="balance-card">
+            <p style="opacity: 0.8; margin: 0;">Current Balance</p>
+            <h1 id="total-balance">$0.00</h1>
+            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                <div><small>Income</small><div id="total-income">$0.00</div></div>
+                <div><small>Expenses</small><div id="total-expense">$0.00</div></div>
+            </div>
+        </div>
+
+        <input type="text" id="searchBar" placeholder="Search transactions..." onkeyup="renderTransactions()" class="glass-card">
+        
+        <h3>Recent Transactions</h3>
+        <div id="transaction-list"></div>
+    </div>
+
+    <div id="add" class="tab-content">
+        <div class="glass-card" style="padding: 20px;">
+            <h2>Add Transaction</h2>
+            <input type="number" id="amount" placeholder="Amount" inputmode="decimal">
+            <input type="text" id="note" placeholder="What was this for?">
+            <select id="category">
+                <option value="Salary">💰 Salary</option>
+                <option value="Food">🍔 Food</option>
+                <option value="Travel">🚗 Travel</option>
+                <option value="Bills">🧾 Bills</option>
+                <option value="Shopping">🛍️ Shopping</option>
+                <option value="Others">✨ Others</option>
+            </select>
+            <input type="date" id="date">
+            <div style="margin: 10px 0;">
+                <label><i class="fa fa-camera"></i> Attach Receipt</label>
+                <input type="file" id="billImage" accept="image/*">
+            </div>
+            <div class="btn-group">
+                <button class="btn-income" onclick="saveTransaction('income')">Income</button>
+                <button class="btn-expense" onclick="saveTransaction('expense')">Expense</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="stats" class="tab-content">
+        <div class="glass-card" style="padding: 20px; margin-bottom: 20px;">
+            <div class="btn-group">
+                <input type="date" id="startDate">
+                <input type="date" id="endDate">
+            </div>
+            <button onclick="renderStats()" style="background: var(--primary); color: white; border: none;">Apply Filter</button>
+        </div>
+        <div class="glass-card" style="padding: 20px;">
+            <canvas id="expenseChart"></canvas>
+        </div>
+    </div>
+
+    <div id="settings" class="tab-content">
+        <div class="glass-card" style="padding: 20px;">
+            <h3>Preferences</h3>
+            <button onclick="toggleDarkMode()" style="background: #333; color: white; border: none;">
+                <i class="fa fa-moon"></i> Toggle Dark Mode
+            </button>
+            <button onclick="exportCSV()" style="background: #0ea5e9; color: white; border: none; margin-top: 10px;">
+                <i class="fa fa-file-csv"></i> Export to CSV
+            </button>
+            <button onclick="clearData()" style="background: var(--danger); color: white; border: none; margin-top: 10px;">
+                <i class="fa fa-trash"></i> Clear All Data
+            </button>
+        </div>
+    </div>
+</div>
+
+<nav class="bottom-nav">
+    <div class="nav-item active" onclick="switchTab('home', this)"><i class="fa fa-home"></i>Home</div>
+    <div class="nav-item" onclick="switchTab('add', this)"><i class="fa fa-plus-circle"></i>Add</div>
+    <div class="nav-item" onclick="switchTab('stats', this)"><i class="fa fa-chart-pie"></i>Stats</div>
+    <div class="nav-item" onclick="switchTab('settings', this)"><i class="fa fa-cog"></i>Settings</div>
+</nav>
+
+<script>
+    let transactions = JSON.parse(localStorage.getItem('txns')) || [];
+    let myChart = null;
+
+    // Tab Switching
+    function switchTab(tabId, el) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        el.classList.add('active');
+        if(tabId === 'stats') renderStats();
+        if(tabId === 'home') renderTransactions();
+    }
+
+    // Save Logic
+    async function saveTransaction(type) {
+        const amt = document.getElementById('amount').value;
+        const note = document.getElementById('note').value;
+        const cat = document.getElementById('category').value;
+        const date = document.getElementById('date').value || new Date().toISOString().split('T')[0];
+        const file = document.getElementById('billImage').files[0];
+
+        if(!amt) return alert("Enter amount");
+
+        let base64 = "";
+        if(file) {
+            base64 = await toBase64(file);
+        }
+
+        const txn = { id: Date.now(), amt: parseFloat(amt), note, cat, date, type, img: base64 };
+        transactions.unshift(txn);
+        localStorage.setItem('txns', JSON.stringify(transactions));
+        
+        // Reset and Redirect
+        document.getElementById('amount').value = '';
+        document.getElementById('note').value = '';
+        switchTab('home', document.querySelectorAll('.nav-item')[0]);
+        renderTransactions();
+    }
+
+    const toBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+
+    // Render Logic
+    function renderTransactions() {
+        const list = document.getElementById('transaction-list');
+        const search = document.getElementById('searchBar').value.toLowerCase();
+        list.innerHTML = '';
+        
+        let inc = 0, exp = 0;
+        
+        transactions.forEach(t => {
+            if(t.type === 'income') inc += t.amt; else exp += t.amt;
+            
+            if(t.note.toLowerCase().includes(search) || t.cat.toLowerCase().includes(search)) {
+                const item = document.createElement('div');
+                item.className = 'glass-card transaction-item';
+                item.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:12px">
+                        ${t.img ? `<img src="${t.img}" class="bill-preview" onclick="showImg('${t.img}')">` : `<div style="width:40px; height:40px; border-radius:8px; background:#ddd; display:flex; align-items:center; justify-content:center"><i class="fa fa-receipt"></i></div>`}
+                        <div>
+                            <div style="font-weight:600">${t.note || t.cat}</div>
+                            <small style="opacity:0.6">${t.date}</small>
+                        </div>
+                    </div>
+                    <div style="font-weight:600; color: ${t.type==='income' ? 'var(--success)' : 'var(--danger)'}">
+                        ${t.type==='income' ? '+' : '-'}$${t.amt.toFixed(2)}
+                    </div>
+                `;
+                list.appendChild(item);
+            }
+        });
+
+        document.getElementById('total-balance').innerText = `$${(inc - exp).toFixed(2)}`;
+        document.getElementById('total-income').innerText = `$${inc.toFixed(2)}`;
+        document.getElementById('total-expense').innerText = `$${exp.toFixed(2)}`;
+    }
+
+    // Stats Logic
+    function renderStats() {
+        const start = document.getElementById('startDate').value;
+        const end = document.getElementById('endDate').value;
+        
+        let filtered = transactions;
+        if(start && end) {
+            filtered = transactions.filter(t => t.date >= start && t.date <= end);
+        }
+
+        const cats = {};
+        filtered.filter(t => t.type === 'expense').forEach(t => {
+            cats[t.cat] = (cats[t.cat] || 0) + t.amt;
+        });
+
+        if(myChart) myChart.destroy();
+        const ctx = document.getElementById('expenseChart').getContext('2d');
+        myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(cats),
+                datasets: [{
+                    data: Object.values(cats),
+                    backgroundColor: ['#6366f1', '#a855f7', '#ec4899', '#f59e0b', '#22c55e', '#ef4444']
+                }]
+            },
+            options: { plugins: { legend: { position: 'bottom' } } }
+        });
+    }
+
+    // Settings Functions
+    function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
+    
+    function exportCSV() {
+        let csv = "Date,Category,Note,Type,Amount\n";
+        transactions.forEach(t => {
+            csv += `${t.date},${t.cat},${t.note},${t.type},${t.amt}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('hidden', '');
+        a.setAttribute('href', url);
+        a.setAttribute('download', 'finance_report.csv');
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function clearData() { if(confirm("Delete all data?")) { localStorage.clear(); location.reload(); } }
+    
+    function showImg(src) {
+        const w = window.open("");
+        w.document.write(`<img src="${src}" style="width:100%">`);
+    }
+
+    // Initial Load
+    renderTransactions();
+</script>
+</body>
+</html>
